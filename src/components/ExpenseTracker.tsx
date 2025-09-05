@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, DollarSign, TrendingUp } from "lucide-react";
+import { Plus, Trash2, DollarSign, TrendingUp, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 interface Expense {
@@ -31,6 +31,19 @@ const ExpenseTracker = () => {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
 
+  // Load expenses from localStorage on component mount
+  useEffect(() => {
+    const savedExpenses = localStorage.getItem('expenses');
+    if (savedExpenses) {
+      setExpenses(JSON.parse(savedExpenses));
+    }
+  }, []);
+
+  // Save expenses to localStorage whenever expenses change
+  useEffect(() => {
+    localStorage.setItem('expenses', JSON.stringify(expenses));
+  }, [expenses]);
+
   const addExpense = () => {
     if (!amount || !description || !category) {
       toast.error("Please fill in all fields");
@@ -55,6 +68,12 @@ const ExpenseTracker = () => {
   const deleteExpense = (id: string) => {
     setExpenses(expenses.filter((expense) => expense.id !== id));
     toast.success("Expense deleted");
+  };
+
+  const resetAllExpenses = () => {
+    setExpenses([]);
+    localStorage.removeItem('expenses');
+    toast.success("All expenses cleared");
   };
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -92,9 +111,22 @@ const ExpenseTracker = () => {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center space-x-2 text-muted-foreground">
-                <TrendingUp className="w-4 h-4" />
-                <span className="text-sm">{expenses.length} transactions</span>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2 text-muted-foreground">
+                  <TrendingUp className="w-4 h-4" />
+                  <span className="text-sm">{expenses.length} transactions</span>
+                </div>
+                {expenses.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={resetAllExpenses}
+                    className="text-destructive border-destructive/20 hover:bg-destructive/10"
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Reset All
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
