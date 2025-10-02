@@ -4,8 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, DollarSign, TrendingUp, RotateCcw } from "lucide-react";
+import { Plus, Trash2, DollarSign, TrendingUp, RotateCcw, Download } from "lucide-react";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface Expense {
   id: string;
@@ -83,6 +86,79 @@ const ExpenseTracker = () => {
     return cat ? cat.color : "category-other";
   };
 
+  const exportToCSV = () => {
+    if (expenses.length === 0) {
+      toast.error("No expenses to export");
+      return;
+    }
+
+    const csvContent = [
+      ["Date", "Description", "Category", "Amount"],
+      ...expenses.map(exp => [
+        exp.date,
+        exp.description,
+        categories.find(c => c.value === exp.category)?.label || exp.category,
+        exp.amount.toFixed(2)
+      ])
+    ].map(row => row.join(",")).join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "cleaned_financial_data.csv";
+    a.click();
+    window.URL.revokeObjectURL(url);
+    toast.success("CSV exported successfully");
+  };
+
+  const exportToExcel = () => {
+    if (expenses.length === 0) {
+      toast.error("No expenses to export");
+      return;
+    }
+
+    const data = expenses.map(exp => ({
+      Date: exp.date,
+      Description: exp.description,
+      Category: categories.find(c => c.value === exp.category)?.label || exp.category,
+      "Amount 💸": exp.amount.toFixed(2)
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Expenses");
+    XLSX.writeFile(wb, "cleaned_financial_data.xlsx");
+    toast.success("Excel file exported successfully");
+  };
+
+  const exportToPDF = () => {
+    if (expenses.length === 0) {
+      toast.error("No expenses to export");
+      return;
+    }
+
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Financial Data 💸", 14, 15);
+    
+    const tableData = expenses.map(exp => [
+      exp.date,
+      exp.description,
+      categories.find(c => c.value === exp.category)?.label || exp.category,
+      exp.amount.toFixed(2)
+    ]);
+
+    autoTable(doc, {
+      head: [["Date", "Description", "Category", "Amount 💸"]],
+      body: tableData,
+      startY: 25,
+    });
+
+    doc.save("cleaned_financial_data.pdf");
+    toast.success("PDF exported successfully");
+  };
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -107,7 +183,7 @@ const ExpenseTracker = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Total Expenses</p>
                   <p className="text-3xl font-bold text-foreground">
-                    ${totalExpenses.toFixed(2)}
+                    💸 {totalExpenses.toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -117,15 +193,44 @@ const ExpenseTracker = () => {
                   <span className="text-sm">{expenses.length} transactions</span>
                 </div>
                 {expenses.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={resetAllExpenses}
-                    className="text-destructive border-destructive/20 hover:bg-destructive/10"
-                  >
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Reset All
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={exportToCSV}
+                      className="border-primary/20 hover:bg-primary/10"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      CSV
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={exportToExcel}
+                      className="border-primary/20 hover:bg-primary/10"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Excel
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={exportToPDF}
+                      className="border-primary/20 hover:bg-primary/10"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      PDF
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={resetAllExpenses}
+                      className="text-destructive border-destructive/20 hover:bg-destructive/10"
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Reset All
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
@@ -220,7 +325,7 @@ const ExpenseTracker = () => {
                       </div>
                       <div className="flex items-center space-x-3">
                         <span className="font-bold text-lg">
-                          ${expense.amount.toFixed(2)}
+                          💸 {expense.amount.toFixed(2)}
                         </span>
                         <Button
                           variant="ghost"
